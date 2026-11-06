@@ -1,7 +1,7 @@
 repos:
   - repo: local
     hooks:
-      # Roc scripts run with roc-stable; run hooks inside `blueprint shell`.
+      # Roc scripts run with roc-stable; run hooks inside `kai shell`.
       - id: no-tracked-machine-code
         name: Reject staged machine code
         entry: scripts/check_all.roc -- --staged
@@ -17,7 +17,7 @@ repos:
         name: Check Roc pins, scripts and applications
         entry: scripts/check_all.roc
         language: system
-        files: (\.roc$|^Blueprint\.lock$)
+        files: (\.roc$|^\.kai/lock\.json$)
         pass_filenames: false
       # Clippy runs through run_cargo.py so the host links against its verified
       # build-time inputs, the same way CI builds it. Vendored GPUI retains its

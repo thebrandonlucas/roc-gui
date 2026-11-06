@@ -12,12 +12,12 @@ import cli.Stdout
 import src/MachineCode
 import src/Pins
 
-## Everything `blueprint run check` checks of the repository's Roc.
+## Everything `kai run check` checks of the repository's Roc.
 ##
-##     blueprint run check              # every section below
+##     kai run check                    # every section below
 ##     scripts/check_all.roc -- --staged   # the machine-code section, over the Git index
 ##
-## `roc-stable`, which Blueprint.roc fetches, runs this script and checks the
+## `roc-stable`, which Kaifile.roc fetches, runs this script and checks the
 ## others. Bare `roc` is the latest nightly: the platform, its applications and
 ## its benchmarks carry no compiler pin and must check, warning-free, with it.
 main! = |args| {
@@ -30,14 +30,14 @@ main! = |args| {
 	nightly!(["version"])?
 
 	Stdout.line!("\n== Compiler pins")?
-	tag = match Pins.stable_tag(read!("Blueprint.roc")?) {
+	tag = match Pins.stable_tag(read!("Kaifile.roc")?) {
 		Ok(found) => found
-		Err(NoStableCompiler) => return fail!("Blueprint.roc does not fetch roc-stable with Recipes.roc_nightly(\"<tag>\")")
+		Err(NoStableCompiler) => return fail!("Kaifile.roc does not fetch roc-stable with FetchLocked(\"roc-stable\", roc_nightly(\"<tag>\"))")
 	}
 	scripts = roc_files!("scripts")?
 	for script in scripts {
 		if Pins.roc_pin(read!(script)?) != Ok(tag) {
-			return fail!("${script}: the app header must declare roc: \"${tag}\", the roc-stable release in Blueprint.roc")
+			return fail!("${script}: the app header must declare roc: \"${tag}\", the roc-stable release in Kaifile.roc")
 		}
 	}
 	for retired in [".roc-version", ".github/roc-nightly.json"] {
@@ -46,7 +46,7 @@ main! = |args| {
 		}
 	}
 	applications = roots!()?
-	for root in ["Blueprint.roc"].concat(applications) {
+	for root in ["Kaifile.roc"].concat(applications) {
 		if Pins.roc_pin(read!(root)?) != Err(NoPin) {
 			return fail!("${root}: only scripts/ names a compiler; remove the roc header field")
 		}
@@ -75,15 +75,15 @@ main! = |args| {
 	Stdout.line!("PASS platform/main-glue.roc declares the platform's targets")?
 
 	# The development shell and the linker-input producers build from one
-	# nixpkgs revision, held twice so that a Blueprint change never alters a
+	# nixpkgs revision, held twice so that a Kai change never alters a
 	# linker input's provenance.
 	Stdout.line!("\n== Nix package set")?
-	nixpkgs = match (Pins.blueprint_nixpkgs(read!("dependencies/FreeType.roc")?), Pins.pinned_nixpkgs(read!("dependencies/nixpkgs-pin.nix")?)) {
-		(Ok(blueprint), Ok(pinned)) if blueprint == pinned => pinned
-		(Ok(blueprint), Ok(pinned)) => return fail!("Blueprint.roc takes Nix tools from nixpkgs ${blueprint}, but dependencies/nixpkgs-pin.nix pins ${pinned}; move both together")
+	nixpkgs = match (Pins.kaifile_nixpkgs(read!("dependencies/FreeType.roc")?), Pins.pinned_nixpkgs(read!("dependencies/nixpkgs-pin.nix")?)) {
+		(Ok(declared), Ok(pinned)) if declared == pinned => pinned
+		(Ok(declared), Ok(pinned)) => return fail!("Kaifile.roc takes Nix tools from nixpkgs ${declared}, but dependencies/nixpkgs-pin.nix pins ${pinned}; move both together")
 		_ => return fail!("dependencies/FreeType.roc and dependencies/nixpkgs-pin.nix must each name one nixpkgs revision")
 	}
-	Stdout.line!("PASS Blueprint.roc and the linker inputs build from nixpkgs ${nixpkgs}")?
+	Stdout.line!("PASS Kaifile.roc and the linker inputs build from nixpkgs ${nixpkgs}")?
 
 	machine_code!(Tracked)?
 

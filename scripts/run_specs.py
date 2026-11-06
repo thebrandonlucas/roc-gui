@@ -210,7 +210,7 @@ COMPILER_BLOCKED = {
 INTERMITTENT = {
     # TODO(release blocker): Observatory's folder rewatch sometimes counts one
     # change, [2, 1, 0, 0, 1] where [2, 0, 0, 0, _] is expected, on the hosted
-    # macOS runner (run 39515606523) and the Linux Blueprint job (run
+    # macOS runner (run 39515606523) and the Linux build job (run
     # 39522990540); it never failed locally. The suspected cause is SQLite
     # creating and removing -wal/-shm files beside the captures Observatory
     # opens. Find the cause, fix it, and remove this entry.

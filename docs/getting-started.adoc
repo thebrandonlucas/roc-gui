@@ -25,17 +25,16 @@ already pointing at that platform, so they build without a checkout.
 == Work from a checkout instead
 
 Contributors build the platform locally. Install a current Roc nightly as
-`roc` and the `blueprint` binary from the
-https://github.com/lukewilliamboswell/roc-blueprint/releases/tag/0.8.0[roc-blueprint 0.8.0 release].
-On Linux x86-64 or Apple silicon macOS, install Nix with flakes enabled for the
-native toolchain, then enter the development shell from the repository root:
+`roc` and https://github.com/thebrandonlucas/kai[Kai], which runs on Linux.
+On Linux x86-64, install Nix with flakes enabled for the native toolchain,
+then enter the development shell from the repository root:
 
 [source,sh]
 ----
-blueprint shell
+kai shell
 ----
 
-`Blueprint.lock` pins the Nix package set and the tooling compiler. Rustup
+`.kai/lock.json` pins the Nix package set and the tooling compiler. Rustup
 selects the toolchain in `rust-toolchain.toml`. On Windows, install the Rust
 toolchain directly. No application names a compiler: each builds with the
 `roc` on the machine.

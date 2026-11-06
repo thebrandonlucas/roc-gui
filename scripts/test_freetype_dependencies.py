@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import build_freetype as producer
 from dependency_archive import digest, write_archive
 import release_dependencies
-import test_blueprint_link_inputs as blueprint_fixtures
+import test_kai_link_inputs as kai_fixtures
 import tarfile
 
 
@@ -33,27 +33,27 @@ class FreeTypeDependencyTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "reviewed recipe"):
                 producer.verify_source(source, self.source)
 
-    def test_blueprint_source_follows_the_store_link_to_the_reviewed_bytes(self):
+    def test_kai_source_follows_the_store_link_to_the_reviewed_bytes(self):
         store = self.root / "store"
         store.mkdir()
         (store / "source").write_bytes(self.bytes)
         inputs = self.root / "inputs"
         inputs.mkdir()
         (inputs / "freetype-source").symlink_to(store / "source")
-        source = producer.blueprint_source(inputs)
+        source = producer.kai_source(inputs)
         self.assertFalse(source.is_symlink())
         producer.verify_source(source, self.source)
         (inputs / "freetype-source").unlink()
         (inputs / "freetype-source").symlink_to(store)
         with self.assertRaisesRegex(ValueError, "not a regular file"):
-            producer.blueprint_source(inputs)
+            producer.kai_source(inputs)
         (inputs / "freetype-source").unlink()
         with self.assertRaisesRegex(ValueError, "no FreeType source"):
-            producer.blueprint_source(inputs)
+            producer.kai_source(inputs)
 
     def make_archive(self, missing_license=False):
         policy = release_dependencies.KINDS["freetype"]
-        fixture = blueprint_fixtures.BlueprintLinkInputTests()
+        fixture = kai_fixtures.KaiLinkInputTests()
         fixture.root = self.root
         draft = fixture.make_source_archive()
         with tarfile.open(draft) as archive:

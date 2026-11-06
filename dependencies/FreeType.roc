@@ -1,5 +1,4 @@
-import pf.Config
-import pf.Url
+import std.Config
 
 import "freetype.json" as descriptor : Str
 
@@ -12,11 +11,9 @@ FreeType :: [].{
 	settings = {
 		input : Descriptor
 		input = Json.parse(descriptor) ?? crash "Invalid FreeType source descriptor"
-		url = Url.from_quote(input.source.url) ?? crash "Invalid FreeType source URL"
 		[
 			Packages("nix", From(NixPackages("github:NixOS/nixpkgs/6774f7bc253789b113a4f39285dc0fa100abeacc"))),
-			Executor("freetype-native", Nix("nix")),
-			SourceFile("freetype-source", url, input.source.sha256),
+			FetchAll("freetype-source", { url: input.source.url, sha256: input.source.sha256 }),
 			Environment(
 				"freetype-producer",
 				[
@@ -41,20 +38,20 @@ FreeType :: [].{
 						"nix#brotli.lib",
 						"nix#brotli.dev",
 					]),
-					Command("zig", "nix#zig_0_16"),
+					Alias("zig", "nix#zig_0_16", "zig"),
 				],
 			),
 			Build(
 				"freetype",
 				[
-					Execute("freetype-native"),
 					Use("freetype-producer"),
 					Files([
 						"dependencies/FreeType.roc",
 						"dependencies/freetype.json",
+						"dependencies/nixpkgs-pin.nix",
 						"dependencies/linux/zig-toolchain.cmake",
 						"scripts/build_freetype.py",
-						"scripts/blueprint_link_inputs.py",
+						"scripts/kai_link_inputs.py",
 						"scripts/dependency_archive.py",
 						"scripts/dependency_artifacts.py",
 						"test/dependencies/freetype.c",

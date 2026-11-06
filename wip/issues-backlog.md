@@ -30,7 +30,7 @@ Each item either links an entry below or is a maintainer action.
   this fixture while retaining the other upstream project tests. Adapt the
   fixture to the wrapper or adopt an upstream fix, then remove the exclusion.
 
-## Blueprint verification and compiler watching
+## Kai verification and compiler watching
 
 - [ ] **Support NixOS executable loading.** Linux executables select the native
   system ELF loader. The Nix development shell supplies build dependencies, but
@@ -1213,7 +1213,7 @@ names the reproduction so the workaround can be removed when the fix lands.
   change.**
   `examples/observatory/specs/folder-rewatch.scm` line 18 expects watch
   counters `[2, 0, 0, 0, _]` and observed `[2, 1, 0, 0, 1]` on the hosted macOS
-  runner (CI run 39515606523) and the Linux Blueprint job (run 39522990540);
+  runner (CI run 39515606523) and the Linux build job (run 39522990540);
   each passed in other runs and every local run. The specification writes
   nothing, but Observatory summarizes the folder's captures, which are WAL
   databases, after the folder list is shown, and SQLite can create and remove
@@ -1472,28 +1472,26 @@ names the reproduction so the workaround can be removed when the fix lands.
 
 ## Continuous integration
 
-- [ ] **Take the host toolchain from Blueprint on every runner.** The host and
+- [ ] **Take the host toolchain from Kai on every runner.** The host and
   linker-input jobs install Zig 0.16 and Rust 1.95.0 through
-  `.github/actions/setup-toolchain`, repeating versions `Blueprint.roc` and
-  `rust-toolchain.toml` declare, with nothing checking they agree. The same
-  action installs the Windows `blueprint.exe` itself, admitted by a SHA-256
-  recorded beside the step, because roc-automation's shared `setup-blueprint`
-  installs no Windows binary and Blueprint runs no Windows CI tasks:
-  https://github.com/lukewilliamboswell/roc-automation/issues/59. When it
-  does, add `x86_64-windows` to `Systems`, fetch Zig with a recipe there, and
-  delete `setup-toolchain`.
+  `.github/actions/setup-toolchain`, repeating versions `Kaifile.roc` and
+  `rust-toolchain.toml` declare, with nothing checking they agree. Kai runs
+  on Linux only for now, so the macOS and Windows jobs, whose `build.py`
+  admits the FreeType linker input with `kai build freetype --plan`, wait for
+  a Kai release that runs there. When it does, add `x86_64-windows` to
+  `Systems`, fetch Zig there, and delete `setup-toolchain`.
 
-- [ ] **Read the linker inputs' nixpkgs pin from Blueprint.**
+- [ ] **Read the linker inputs' nixpkgs pin from Kai.**
   `dependencies/nixpkgs-pin.nix` repeats the revision and `narHash` that
-  `Blueprint.lock` locks, and `scripts/check_all.roc` compares only the
+  `.kai/lock.json` locks, and `scripts/check_all.roc` compares only the
   revision `dependencies/FreeType.roc` declares, so a disagreement in
-  `narHash` goes unnoticed. `blueprint lock show --json nix` reports both
-  (https://github.com/lukewilliamboswell/roc-blueprint/issues/51 is closed),
-  and `scripts/check_linux_reproduction.py` already reads it. Derive the pin
-  from that report, fingerprint that entry alone, and delete the duplicate.
-  FreeType is produced through Blueprint `Build`; move the ALSA, glibc, unwind
-  and xkbcommon producers onto it the same way
-  (https://github.com/lukewilliamboswell/roc-blueprint/issues/52 is closed).
+  `narHash` goes unnoticed. `kai lock` reports both, and
+  `scripts/check_linux_reproduction.py` already reads it; the FreeType
+  build's evidence takes the pin from `nixpkgs-pin.nix` because Kai's input
+  record lists no package sources. Derive the pin from that report,
+  fingerprint that entry alone, and delete the duplicate. FreeType is
+  produced through a Kai `Build`; move the ALSA, glibc, unwind and xkbcommon
+  producers onto it the same way.
 
 - [ ] **Port the remaining automation to Roc scripts.** roc-automation keeps
   repository automation in `scripts/*.roc` run by `roc-stable`. The checks,

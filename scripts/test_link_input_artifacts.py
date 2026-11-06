@@ -11,7 +11,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from dependency_archive import write_archive, digest
 from test_native_archive_fixture import current_native
 from dependency_artifacts import unpack_verified
-import test_blueprint_link_inputs as fixtures
+import test_kai_link_inputs as fixtures
 import link_input_artifacts as links
 
 
@@ -39,7 +39,7 @@ class LinkInputArtifactsTests(unittest.TestCase):
                          f"licenses/{name}/LICENSE": b"terms",
                          f"sources/{name}/recipe": b"recipe"}
             if name == "freetype":
-                fixture = fixtures.BlueprintLinkInputTests()
+                fixture = fixtures.KaiLinkInputTests()
                 fixture.root = directory
                 fixture.make_source_archive().rename(directory / "freetype-x64glibc.tar")
             else:
@@ -57,8 +57,8 @@ class LinkInputArtifactsTests(unittest.TestCase):
                       "ref": "refs/heads/change", "workflow": links.REPOSITORY +
                       "/.github/workflows/link-inputs.yml", "input_fingerprint": "f" * 64}
             with patch.object(links, "source_fingerprint", return_value="f" * 64), patch.object(
-                    links.blueprint_admission, "read_record", return_value={"reviewed": True}), patch.object(
-                    links.blueprint_admission, "verify_bytes"), patch.object(links.blueprint_admission, "check_current"):
+                    links.kai_admission, "read_record", return_value={"reviewed": True}), patch.object(
+                    links.kai_admission, "verify_bytes"), patch.object(links.kai_admission, "check_current"):
                 manifest = links.compose(components, root / "release", resource,
                                          root=links.ROOT, source=source)
             self.assertEqual(set(manifest["assets"]), set(links.TARGETS))
@@ -96,9 +96,9 @@ class LinkInputArtifactsTests(unittest.TestCase):
             with self.assertRaises(links.UncommittedLinkInputs):
                 links.source_fingerprint(root)
 
-    def test_new_lock_requires_fresh_component_binding_without_provider_preparation(self):
-        from test_blueprint_admission import BlueprintAdmissionTests
-        fixture = BlueprintAdmissionTests()
+    def test_new_lock_requires_fresh_component_binding(self):
+        from test_kai_admission import KaiAdmissionTests
+        fixture = KaiAdmissionTests()
         fixture.setUp()
         with tempfile.TemporaryDirectory() as temporary:
             path = Path(temporary) / "link-inputs.lock.json"
@@ -112,15 +112,15 @@ class LinkInputArtifactsTests(unittest.TestCase):
                                 for target in links.TARGETS}, "component_builds": {"freetype": fixture.record}}
             path.write_text(json.dumps(lock))
             with patch.object(links, "source_fingerprint", return_value="f" * 64), patch.object(
-                    links.blueprint_admission.blueprint_link_inputs, "plan", return_value=fixture.current) as plan:
+                    links.kai_admission.kai_link_inputs, "plan", return_value=fixture.current) as plan:
                 self.assertEqual(links.read_lock(path)["component_builds"], lock["component_builds"])
                 self.assertNotIn("prepare", plan.call_args.kwargs)
-                changed = dict(fixture.current, snapshot_digest="sha256:" + "c" * 64)
+                changed = dict(fixture.current, snapshot="/nix/store/" + "c" * 32 + "-kai-project")
                 plan.return_value = changed
                 with self.assertRaises(links.StaleLinkInputs):
                     links.read_lock(path)
                 plan.return_value = {"schema_version": 99}
-                with self.assertRaisesRegex(ValueError, "invalid Blueprint") as raised:
+                with self.assertRaisesRegex(ValueError, "invalid Kai") as raised:
                     links.read_lock(path)
                 self.assertNotIsInstance(raised.exception, links.StaleLinkInputs)
 
@@ -136,11 +136,11 @@ class LinkInputArtifactsTests(unittest.TestCase):
                     "targets": {target: {"asset": f"link-inputs-{target}.tar",
                                          "sha256": "c" * 64, "size": 1}
                                 for target in links.TARGETS}}
-            from test_blueprint_admission import BlueprintAdmissionTests
-            fixture = BlueprintAdmissionTests()
+            from test_kai_admission import KaiAdmissionTests
+            fixture = KaiAdmissionTests()
             fixture.setUp()
             lock["component_builds"] = {"freetype": fixture.record}
-            self.admission_patch = patch.object(links.blueprint_admission, "check_current")
+            self.admission_patch = patch.object(links.kai_admission, "check_current")
             self.admission_patch.start()
             self.addCleanup(self.admission_patch.stop)
             path.write_text(json.dumps(lock))

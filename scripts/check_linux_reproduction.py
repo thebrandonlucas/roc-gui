@@ -4,9 +4,8 @@
 import argparse
 import json
 import os
-import re
 
-import blueprint_link_inputs
+import kai_link_inputs
 from pathlib import Path
 import subprocess
 import tempfile
@@ -24,8 +23,8 @@ def check(components, target="x64glibc"):
         with tempfile.TemporaryDirectory(prefix="roc-gui-reproduction-") as temporary:
             root = Path(temporary) / "archive"
             manifest = unpack_verified(components / f"{name}-{target}.tar", {"name": name, "target": target}, root)
-            if manifest["schema_version"] == 5:
-                check_blueprint_freetype(root / "sources/freetype", manifest)
+            if manifest["schema_version"] == 6:
+                check_kai_freetype(root / "sources/freetype", manifest)
                 continue
             command = ["nix", "eval", "--impure", "--raw", "--file"]
             expected = subprocess.check_output([
@@ -38,32 +37,28 @@ def check(components, target="x64glibc"):
             print(name + ": corresponding sources reproduce the identical derivation", flush=True)
 
 
-def check_blueprint_freetype(source, manifest):
-    """Reprepare from shipped producer files and verify exact selected package pins."""
-    original = blueprint_link_inputs.plan(prepare=True)
-    platform = re.search(r'platform "([^"\n]+)"', (ROOT / "Blueprint.roc").read_text())
-    if platform is None:
-        raise ValueError("missing Blueprint reproduction platform")
-    (source / "Blueprint.roc").write_text(blueprint_link_inputs.reproduction_config(platform.group(1)))
+def check_kai_freetype(source, manifest):
+    """Replan from shipped producer files and verify exact selected package pins."""
+    original = kai_link_inputs.plan()
+    packages = kai_link_inputs.reproduction_packages((ROOT / "Kaifile.roc").read_text(), source)
+    (source / "Kaifile.roc").write_text(kai_link_inputs.reproduction_config(packages))
     for name, mode in manifest["build"]["reproduction_modes"].items():
         (source / name).chmod(mode)
     # This is an explicit reproduction operation, not ordinary consumption.
     # Immutable URL/revision fetches are verified against shipped evidence.
-    environment = dict(os.environ, BLUEPRINT_ROOT=str(source), BLUEPRINT_TARGET="x86_64-linux")
-    subprocess.run([environment.get("BLUEPRINT", "blueprint"), "update"], cwd=source,
-                   env=environment, check=True)
-    pins = blueprint_link_inputs.command(["lock", "show", "--json", "nix"], root=source)
-    expected = json.loads((source / "blueprint-input-evidence.json").read_text())["packages"][0]
-    locked = pins.get("sources", {}).get("nix", {})
-    fetch = locked.get("metadata", {}).get("nix", {}).get("fetchTree", {})
-    if (pins.get("format") != 2 or locked.get("provider") != expected["provider"]
-            or fetch.get("rev") != expected["rev"] or fetch.get("narHash") != expected["narHash"]):
+    subprocess.run([os.environ.get("KAI", "kai"), "--yes", "update"], cwd=source, check=True)
+    pins = kai_link_inputs.command(["lock"], root=source)
+    expected = json.loads((source / "kai-input-evidence.json").read_text())["packages"][0]
+    locked = [entry for entry in pins.get("inputs", []) if entry.get("name") == "nix" and entry.get("section") == "nix"]
+    if (pins.get("schema_version") != 1 or len(locked) != 1
+            or locked[0].get("revision") != expected["rev"]
+            or locked[0].get("hash", {}).get("value") != expected["narHash"]):
         raise ValueError("FreeType reproduction package pin differs from selected evidence")
-    reproduced = blueprint_link_inputs.plan(prepare=True, root=source)
-    if ((reproduced["provider"], reproduced["build_identity"])
-            != (original["provider"], original["build_identity"])):
-        raise ValueError("FreeType corresponding sources do not reproduce the prepared build identity")
-    print("freetype: corresponding sources reproduce the identical prepared build", flush=True)
+    reproduced = kai_link_inputs.plan(root=source)
+    if ((reproduced["backend"], reproduced["derivation"])
+            != (original["backend"], original["derivation"])):
+        raise ValueError("FreeType corresponding sources do not reproduce the planned build identity")
+    print("freetype: corresponding sources reproduce the identical planned build", flush=True)
 
 
 if __name__ == "__main__":
