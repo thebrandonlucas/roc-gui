@@ -1,8 +1,9 @@
 # The one nixpkgs revision the linker-input producers build from, as
 # `builtins.fetchTree` takes it. `narHash` makes the fetch fail if the tree
-# differs. Blueprint.roc's development environment names the same revision, and
-# `blueprint run check` fails if the two disagree; a Blueprint change therefore
-# never changes a linker input's provenance.
+# differs. Kaifile.roc's development environment names the same revision, and
+# `kai run check` fails if the two disagree; a Kai change therefore never
+# changes a linker input's provenance. The FreeType build records it as the
+# package pin of its tools.
 {
   type = "github";
   owner = "NixOS";

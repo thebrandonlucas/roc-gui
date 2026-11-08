@@ -41,12 +41,12 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.resolve.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
         with:
-          cache: 'true'
-          cache-workload: check
-      - run: blueprint run compiler-version
-      - run: blueprint run check
+          version: 0.0.12
+          nix: 'false'
+      - run: kai run compiler-version
+      - run: kai run check
 
   # The host compiles against committed bindings. They must be the ones the
   # resolved nightly generates from its own glue specification.
@@ -64,7 +64,10 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.resolve.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
+        with:
+          version: 0.0.12
+          nix: 'false'
       - name: Download the nightly's source and verify its published digest
         env:
           GH_TOKEN: ${{ github.token }}
@@ -76,12 +79,12 @@ jobs:
           echo "${digest#sha256:}  $RUNNER_TEMP/$asset" | sha256sum -c -
           mkdir "$RUNNER_TEMP/roc-source"
           tar -xzf "$RUNNER_TEMP/$asset" -C "$RUNNER_TEMP/roc-source" --strip-components=1
-      - run: blueprint run regenerate-glue -- "$RUNNER_TEMP/roc-source"
+      - run: kai run regenerate-glue -- "$RUNNER_TEMP/roc-source"
       - name: Require the committed bindings
         run: git diff --exit-code -- crates/host/src
 
-  blueprint:
-    name: Blueprint build and application semantics
+  kai-build:
+    name: Kai build and application semantics
     needs: resolve
     runs-on: ubuntu-24.04
     timeout-minutes: 120
@@ -94,11 +97,10 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.resolve.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
         with:
-          install-nix: 'true'
-          cache: 'true'
-          cache-workload: dev
+          version: 0.0.12
+          nix: 'true'
       - name: Install native Linux runtime libraries
         run: |
           sudo apt-get update
@@ -106,11 +108,11 @@ jobs:
       # The macOS environment must evaluate; nothing is built for it here.
       - name: Evaluate the aarch64-darwin environment
         run: |
-          blueprint gen
-          nix eval --raw "path:$PWD/.blueprint#devShells.aarch64-darwin.default.drvPath" >/dev/null
-      - run: blueprint run lint
-      - run: blueprint run build
-      - run: python3 scripts/headless_wayland.py -- blueprint run test -- --only semantic --jobs 2 --timeout 300
+          kai shell default -- true
+          nix eval --raw "path:$PWD/.kai/generated/nix#devShells.aarch64-darwin.default.drvPath" >/dev/null
+      - run: kai run lint
+      - run: kai run build
+      - run: python3 scripts/headless_wayland.py -- kai run test -- --only semantic --jobs 2 --timeout 300
 
   # Each target's host is produced once; its tests wait only for that host.
   host-x64glibc:
@@ -180,8 +182,8 @@ jobs:
             scripts/test_compiler_environment.py \
             scripts/test_alsa_dependencies.py \
             scripts/test_link_input_artifacts.py \
-            scripts/test_blueprint_link_inputs.py \
-            scripts/test_blueprint_admission.py \
+            scripts/test_kai_link_inputs.py \
+            scripts/test_kai_admission.py \
             scripts/test_dependency_artifacts.py \
             scripts/test_prepare_windows_gnu.py \
             scripts/test_host_release_policy.py \
@@ -228,12 +230,15 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.resolve.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@ff89350926987a316333acf983f09591f19a946e
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
         with:
-          cache: 'true'
-          cache-workload: docs
+          version: 0.0.12
+          nix: 'false'
       - id: renderer
-        uses: lukewilliamboswell/roc-automation/actions/blueprint-tool@ff89350926987a316333acf983f09591f19a946e
+        # TODO(thebrandonlucas/roc-automation): the fork's kai-tool action,
+        # which resolves a tool with `kai run TASK`, with the existing tool
+        # action's inputs and outputs. Pinned to the head of the fork's kai branch.
+        uses: thebrandonlucas/roc-automation/actions/kai-tool@19a848eef6e345a671191da6fa6818918c815aa6
         with:
           task: docs-path
           label: roc-docs tools-0.6.0
@@ -307,7 +312,7 @@ jobs:
     needs:
       - check
       - bindings
-      - blueprint
+      - kai-build
       - candidate-x64glibc
       - candidate-arm64mac
       - candidate-x64mingw

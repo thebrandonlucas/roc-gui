@@ -62,7 +62,7 @@ class DependencyTests(unittest.TestCase):
                  "nix_recipe_sha256": hashlib.sha256(b"recipe").hexdigest()}
         entry = {"name": "alsa", "target": "x64glibc"}
         lock_bound = {key: value for key, value in build.items() if key != "nixpkgs_pin_sha256"}
-        lock_bound["blueprint_lock_sha256"] = hashlib.sha256(b"lock").hexdigest()
+        lock_bound["kai_lock_sha256"] = hashlib.sha256(b"lock").hexdigest()
         for index, provenance in enumerate((build, lock_bound, dict(build, nixpkgs_pin_sha256="c" * 64))):
             archive = write_archive(self.root / f"pin-{index}.tar", {
                 "schema_version": 4, **entry, "build": provenance,
@@ -103,7 +103,7 @@ class DependencyTests(unittest.TestCase):
     def test_current_native_inventory_has_only_the_standalone_package_pin(self):
         current = deps.nix_source_inventory("alsa")
         self.assertIn("sources/alsa/dependencies/nixpkgs-pin.nix", current)
-        self.assertNotIn("sources/alsa/Blueprint.lock", current)
+        self.assertNotIn("sources/alsa/.kai/lock.json", current)
         expected = {"sources/windows-gnu-runtime/source.tar.xz", "targets/x64mingw/libunwind.a"}
         self.assertEqual(deps.component_inventory(expected, {"schema_version": 3, "name": "windows-gnu-runtime"}), expected)
         archive = write_archive(self.root / "obsolete.tar", {"schema_version": 2, "name": "alsa", "target": "x64glibc"}, {})

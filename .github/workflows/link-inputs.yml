@@ -47,7 +47,10 @@ jobs:
         with:
           extra-conf: |
             sandbox = true
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
+        with:
+          version: 0.0.12
+          nix: 'false'
       - name: Require sandboxed production
         run: test "$(nix config show sandbox)" = true
       - name: Build every Linux component twice
@@ -60,7 +63,7 @@ jobs:
             cmp "$archive" "$RUNNER_TEMP/rebuild/$(basename "$archive")"
           done
       - name: Admit the exact FreeType build and selected snapshot
-        run: python3 scripts/blueprint_admission.py "$RUNNER_TEMP/candidate/freetype-x64glibc.tar" --output "$RUNNER_TEMP/candidate/freetype-x64glibc.tar.blueprint.json"
+        run: python3 scripts/kai_admission.py "$RUNNER_TEMP/candidate/freetype-x64glibc.tar" --output "$RUNNER_TEMP/candidate/freetype-x64glibc.tar.kai.json"
       - name: Reproduce derivations from corresponding sources
         run: python3 scripts/check_linux_reproduction.py "$RUNNER_TEMP/candidate"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
@@ -88,9 +91,12 @@ jobs:
         with:
           name: link-input-components-linux
           path: ${{ runner.temp }}/candidate
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
+        with:
+          version: 0.0.12
+          nix: 'false'
       - name: Build the production host against the candidate ALSA interface
-        run: blueprint run build -- --skip-inputs --candidate-inputs "$RUNNER_TEMP/candidate"
+        run: kai run build -- --skip-inputs --candidate-inputs "$RUNNER_TEMP/candidate"
       - name: Install native desktop runtime for portability validation
         run: |
           sudo apt-get update
@@ -241,7 +247,10 @@ jobs:
           pattern: link-input-components-*
           merge-multiple: true
           path: ${{ runner.temp }}/components
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
+        with:
+          version: 0.0.12
+          nix: 'false'
       - name: Compose the independently releasable set
         run: python3 scripts/prepare_link_input_release.py --components "$RUNNER_TEMP/components" --resource "$RUNNER_TEMP/components/roc-gui.res" --output "$RUNNER_TEMP/release"
       - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8

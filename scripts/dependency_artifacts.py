@@ -130,12 +130,12 @@ def unpack_verified(archive, entry, destination):
         if (manifest.get("name") != entry["name"]
                 or manifest.get("target") != entry["target"]):
             raise ValueError("dependency manifest identity mismatch")
-        if entry["name"] == "freetype" and manifest["schema_version"] != 5:
-            raise ValueError("FreeType archives require Blueprint schema 5")
+        if entry["name"] == "freetype" and manifest["schema_version"] != 6:
+            raise ValueError("FreeType archives require Kai schema 6")
         native_linux = {"alsa", "glibc", "unwind", "xkbcommon"}
         allowed = ({4} if entry["name"] in native_linux else
                    {3, 4} if entry["name"] == "windows-gnu-runtime" else
-                   {5} if entry["name"] == "freetype" else {1})
+                   {6} if entry["name"] == "freetype" else {1})
         if manifest["schema_version"] not in allowed:
             raise ValueError("dependency manifest is not the producer's current format")
         if manifest["schema_version"] == 4:
@@ -151,13 +151,13 @@ def unpack_verified(archive, entry, destination):
                            (pin_field, "nix_recipe_sha256"))
                     or "builder_image" in build or "builder_recipe_sha256" in build):
                 raise ValueError("invalid Nix dependency provenance")
-        if manifest["schema_version"] == 5:
+        if manifest["schema_version"] == 6:
             build = manifest.get("build", {})
             if ((entry["name"], entry["target"]) != ("freetype", "x64glibc")
-                    or build.get("builder_kind") != "blueprint-nix"
+                    or build.get("builder_kind") != "kai-nix"
                     or not HEX256.fullmatch(build.get("input_evidence_sha256", ""))
-                    or any(key in build for key in ("builder_derivation", "blueprint_lock_sha256", "nix_recipe_sha256"))):
-                raise ValueError("invalid Blueprint dependency provenance")
+                    or any(key in build for key in ("builder_derivation", "kai_lock_sha256", "nix_recipe_sha256"))):
+                raise ValueError("invalid Kai dependency provenance")
         if manifest["schema_version"] == 3:
             build = manifest.get("build", {})
             source = manifest.get("source", {})
@@ -190,30 +190,30 @@ def unpack_verified(archive, entry, destination):
                 source = files.get(f"sources/{entry['name']}/{relative}")
                 if source is None or source["sha256"] != build[field]:
                     raise ValueError("Nix provenance differs from corresponding source")
-        if manifest["schema_version"] == 5:
-            evidence_path = "sources/freetype/blueprint-input-evidence.json"
+        if manifest["schema_version"] == 6:
+            evidence_path = "sources/freetype/kai-input-evidence.json"
             evidence_record = files.get(evidence_path)
             if evidence_record is None or evidence_record["sha256"] != build["input_evidence_sha256"]:
-                raise ValueError("Blueprint evidence differs from corresponding source")
+                raise ValueError("Kai evidence differs from corresponding source")
             evidence = json.load(packed.extractfile(members[evidence_path]))
-            validate_blueprint_freetype_evidence(evidence)
+            validate_kai_freetype_evidence(evidence)
             if evidence["files"][0]["sha256"] != manifest.get("source", {}).get("sha256"):
-                raise ValueError("Blueprint source pin differs from archive source")
+                raise ValueError("Kai source pin differs from archive source")
             original = files.get("sources/freetype/source.tar.xz")
             if original is None or original["sha256"] != evidence["files"][0]["sha256"]:
-                raise ValueError("Blueprint upstream source differs from archive source")
+                raise ValueError("Kai upstream source differs from archive source")
             reproduction = build.get("reproduction_sha256", {})
             modes = build.get("reproduction_modes", {})
-            expected_sources = freetype_blueprint_source_inventory()
+            expected_sources = freetype_kai_source_inventory()
             expected_reproduction = {path.removeprefix("sources/freetype/") for path in expected_sources}
-            expected_reproduction -= {"source.tar.xz", "blueprint-input-evidence.json"}
+            expected_reproduction -= {"source.tar.xz", "kai-input-evidence.json"}
             if set(reproduction) != expected_reproduction or set(modes) != expected_reproduction:
-                raise ValueError("incomplete Blueprint reproduction inventory")
+                raise ValueError("incomplete Kai reproduction inventory")
             for relative, expected in reproduction.items():
                 record = files.get("sources/freetype/" + relative)
                 if (record is None or not HEX256.fullmatch(expected) or record["sha256"] != expected
                         or type(modes[relative]) is not int or modes[relative] not in (0o644, 0o755)):
-                    raise ValueError("Blueprint reproduction differs from corresponding source")
+                    raise ValueError("Kai reproduction differs from corresponding source")
         if manifest["schema_version"] in (3, 4) and entry["name"] == "windows-gnu-runtime":
             build = manifest["build"]
             reproduction = build.get("reproduction_sha256", {})
@@ -281,15 +281,12 @@ def nix_source_inventory(name):
     return {f"sources/{name}/{path}" for path in common}
 
 
-def validate_blueprint_freetype_evidence(evidence):
+def validate_kai_freetype_evidence(evidence):
     """Accept only selected native evidence, never whole-lock or final-identity data."""
-    if (not isinstance(evidence, dict) or evidence.get("format") != 1
-            or set(evidence) != {"format", "packages", "files", "project", "tools", "sources", "dependencies", "roc_packages"}
-            or evidence["sources"] != [] or evidence["dependencies"] != [] or evidence["roc_packages"] != []
-            or not isinstance(evidence["project"], str)
-            or not re.fullmatch(r"/nix/store/[a-z0-9]{32}-[^/]+", evidence["project"])
+    if (not isinstance(evidence, dict) or evidence.get("format") != 2
+            or set(evidence) != {"format", "packages", "files", "tools"}
             or not isinstance(evidence["tools"], list)):
-        raise ValueError("invalid selected Blueprint reproduction evidence")
+        raise ValueError("invalid selected Kai reproduction evidence")
     packages, files = evidence["packages"], evidence["files"]
     if (not isinstance(packages, list) or len(packages) != 1 or not isinstance(packages[0], dict)
             or set(packages[0]) != {"name", "provider", "rev", "narHash"}
@@ -300,19 +297,19 @@ def validate_blueprint_freetype_evidence(evidence):
             or set(files[0]) != {"name", "provider", "sha256"}
             or files[0]["name"] != "freetype-source" or files[0]["provider"] != "file"
             or not HEX256.fullmatch(files[0]["sha256"])):
-        raise ValueError("invalid selected Blueprint reproduction pins")
+        raise ValueError("invalid selected Kai reproduction pins")
     for tool in evidence["tools"]:
         if (not isinstance(tool, dict) or set(tool) != {"name", "path"}
                 or not isinstance(tool["name"], str) or not isinstance(tool["path"], str)
                 or not re.fullmatch(r"/nix/store/[a-z0-9]{32}-[^/]+", tool["path"])):
-            raise ValueError("invalid selected Blueprint tool root")
+            raise ValueError("invalid selected Kai tool root")
 
 
-def freetype_blueprint_source_inventory():
+def freetype_kai_source_inventory():
     return {"sources/freetype/" + path for path in (
-        "source.tar.xz", "blueprint-input-evidence.json", "dependencies/FreeType.roc",
-        "dependencies/freetype.json", "dependencies/linux/zig-toolchain.cmake",
-        "scripts/build_freetype.py", "scripts/blueprint_link_inputs.py",
+        "source.tar.xz", "kai-input-evidence.json", "dependencies/FreeType.roc",
+        "dependencies/freetype.json", "dependencies/nixpkgs-pin.nix", "dependencies/linux/zig-toolchain.cmake",
+        "scripts/build_freetype.py", "scripts/kai_link_inputs.py",
         "scripts/dependency_archive.py", "scripts/dependency_artifacts.py", "test/dependencies/freetype.c",
     )}
 
@@ -321,7 +318,7 @@ def component_inventory(expected, manifest):
     """Select the corresponding-source inventory for the current producer contract."""
     if manifest["schema_version"] == 1 or (manifest["schema_version"] == 3 and manifest["name"] == "windows-gnu-runtime"):
         return expected
-    sources = (freetype_blueprint_source_inventory() if manifest["schema_version"] == 5
+    sources = (freetype_kai_source_inventory() if manifest["schema_version"] == 6
                else nix_source_inventory(manifest["name"]))
     return {path for path in expected if not path.startswith("sources/")} | sources
 

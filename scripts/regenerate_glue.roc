@@ -12,7 +12,7 @@ import cli.Stdout
 
 ## Regenerate the committed host bindings with the latest nightly.
 ##
-##     blueprint run regenerate-glue -- <roc source>
+##     kai run regenerate-glue -- <roc source>
 ##
 ## `<roc source>` is the source of the nightly that bare `roc` is, such as the
 ## nightly release's source archive unpacked. Its Rust glue specification

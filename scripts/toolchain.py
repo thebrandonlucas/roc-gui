@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Rewrite an application's platform dependency and report the compiler in use.
 
-Compiler pins are policy of `scripts/check_all.roc`, run by `blueprint run check`;
+Compiler pins are policy of `scripts/check_all.roc`, run by `kai run check`;
 nothing here repeats that check.
 """
 

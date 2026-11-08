@@ -87,11 +87,11 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.validate.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
         with:
-          cache: 'true'
-          cache-workload: check
-      - run: blueprint run check
+          version: 0.0.12
+          nix: 'false'
+      - run: kai run check
 
   # Each target's host is built fresh on its own system from the release
   # commit, then composed with its notices and source companion.
@@ -149,7 +149,10 @@ jobs:
       - uses: ./.github/actions/setup-roc
         with:
           nightly-tag: ${{ needs.validate.outputs.nightly-tag }}
-      - uses: lukewilliamboswell/roc-automation/actions/setup-blueprint@7aff4132691ad4fc348abe9df146a57512b49bd6
+      - uses: thebrandonlucas/kai/.github/actions/setup-kai@fd316fbad644f2e52c620ad83385fcc4b9c31372 # v0.0.12
+        with:
+          version: 0.0.12
+          nix: 'false'
       - name: Verify the locked linker inputs' attestations
         env:
           GH_TOKEN: ${{ github.token }}
@@ -169,7 +172,10 @@ jobs:
           --version "$RELEASE_VERSION"
           --manifest "$RUNNER_TEMP/release/release-manifest.json"
       - id: renderer
-        uses: lukewilliamboswell/roc-automation/actions/blueprint-tool@ff89350926987a316333acf983f09591f19a946e
+        # TODO(thebrandonlucas/roc-automation): the fork's kai-tool action,
+        # which resolves a tool with `kai run TASK`, with the existing tool
+        # action's inputs and outputs. Pinned to the head of the fork's kai branch.
+        uses: thebrandonlucas/roc-automation/actions/kai-tool@19a848eef6e345a671191da6fa6818918c815aa6
         with:
           task: docs-path
           label: roc-docs tools-0.6.0
@@ -194,7 +200,7 @@ jobs:
           RELEASE_VERSION: ${{ needs.validate.outputs.version }}
         run: |
           bundle=$(jq -r .bundle.name "$RUNNER_TEMP/release/release-manifest.json")
-          blueprint run release-notes -- "$RELEASE_VERSION" "$bundle" "$RUNNER_TEMP/release-notes.md"
+          kai run release-notes -- "$RELEASE_VERSION" "$bundle" "$RUNNER_TEMP/release-notes.md"
           mkdir "$RUNNER_TEMP/notes" && mv "$RUNNER_TEMP/release-notes.md" "$RUNNER_TEMP/notes/"
       - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
         with:

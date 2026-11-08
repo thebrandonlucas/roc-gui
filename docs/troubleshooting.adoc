@@ -60,5 +60,5 @@ rejects incomplete captures before calculating ratios.
 Run `python3 scripts/prepare_docs_diagrams.py` with Mermaid CLI 11.16.0 and its
 Chromium runtime after changing a Mermaid block. Commit its prepared PNG, SVG,
 and manifest together with the source. The shared renderer checks their digests
-and rejects a missing or stale preparation. Run `blueprint run docs` to build
+and rejects a missing or stale preparation. Run `kai run docs` to build
 the manual and API reference with the updated inputs.

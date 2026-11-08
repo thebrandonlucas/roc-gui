@@ -18,7 +18,7 @@ Read the [manual](https://lukewilliamboswell.github.io/roc-gui/) to get started.
 | [![Clipboard History](https://lukewilliamboswell.github.io/roc-gui/gallery/clipboard-history.gif)](examples/clipboard-history/) <br> [Clipboard History](examples/clipboard-history/) | [![System Monitor](https://lukewilliamboswell.github.io/roc-gui/gallery/system-monitor.gif)](examples/system-monitor/) <br> [System Monitor](examples/system-monitor/) | [![Settings Center](https://lukewilliamboswell.github.io/roc-gui/gallery/settings-center.gif)](examples/settings-center/) <br> [Settings Center](examples/settings-center/) |
 | [![Device Configurator](https://lukewilliamboswell.github.io/roc-gui/gallery/device-configurator.gif)](examples/device-configurator/) <br> [Device Configurator](examples/device-configurator/) | [![Animation Studio](https://lukewilliamboswell.github.io/roc-gui/gallery/animation-studio.gif)](examples/animation-studio/) <br> [Animation Studio](examples/animation-studio/) | [![Redis Explorer](https://lukewilliamboswell.github.io/roc-gui/gallery/redis-explorer.gif)](examples/redis-explorer/) <br> [Redis Explorer](examples/redis-explorer/) |
 
-Build from a checkout with `blueprint run build`; see the
+Build from a checkout with `kai run build`; see the
 [development setup](docs/getting-started.adoc).
 
 Contributors should read [AGENTS.md](AGENTS.md). Licensed under

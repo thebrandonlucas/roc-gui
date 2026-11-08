@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 import re
 
-import blueprint_admission
+import kai_admission
 
 from dependency_archive import write_archive
 from dependency_artifacts import fetch, unpack_verified
@@ -123,9 +123,9 @@ def compose(components, output, resource=None, *, root=ROOT, source=None):
     archives = {}
     fingerprint = source_fingerprint(root)
     archive = components / "freetype-x64glibc.tar"
-    freetype = blueprint_admission.read_record(archive.with_suffix(".tar.blueprint.json"))
-    blueprint_admission.verify_bytes(archive, freetype)
-    blueprint_admission.check_current(freetype, root=root)
+    freetype = kai_admission.read_record(archive.with_suffix(".tar.kai.json"))
+    kai_admission.verify_bytes(archive, freetype)
+    kai_admission.check_current(freetype, root=root)
     component_builds = {"freetype": freetype}
     with tempfile.TemporaryDirectory(prefix="roc-gui-link-inputs-") as temporary:
         stage = Path(temporary)
@@ -135,8 +135,8 @@ def compose(components, output, resource=None, *, root=ROOT, source=None):
             for name, component_target in COMPONENTS[target]:
                 archive = components / f"{name}-{component_target}.tar"
                 manifest, payload = _component_files(archive, name, component_target, stage)
-                if name == "freetype" and manifest["schema_version"] != 5:
-                    raise ValueError("new linker-input releases require a Blueprint FreeType candidate")
+                if name == "freetype" and manifest["schema_version"] != 6:
+                    raise ValueError("new linker-input releases require a Kai FreeType candidate")
                 identities[name] = {key: value for key, value in manifest.items() if key != "files"}
                 for path, data in payload.items():
                     destination = _unified_path(path, name, component_target, target)
@@ -206,8 +206,8 @@ def read_lock(path=LOCK, *, root=ROOT):
         if not isinstance(builds, dict) or set(builds) != {"freetype"}:
             raise ValueError("missing FreeType admission in linker-input lock")
         try:
-            blueprint_admission.check_current(builds["freetype"], root=root)
-        except blueprint_admission.StaleAdmission as error:
+            kai_admission.check_current(builds["freetype"], root=root)
+        except kai_admission.StaleAdmission as error:
             raise StaleLinkInputs(str(error)) from error
     fingerprint = source_fingerprint(root)
     if source["input_fingerprint"] != fingerprint:

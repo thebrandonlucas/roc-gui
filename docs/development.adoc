@@ -6,36 +6,36 @@ never reproduce it.
 
 == Development environment
 
-`Blueprint.roc` declares the environment and `Blueprint.lock` fixes it. Commit
-both; `.blueprint/` holds generated files. Install the released `blueprint`
-binary and a current Roc nightly as `roc`, then run tasks from the repository
+`Kaifile.roc` declares the environment and `.kai/lock.json` fixes it. Commit
+both; the rest of `.kai/` holds generated files. Install Kai, which runs on
+Linux, and a current Roc nightly as `roc`, then run tasks from the repository
 root:
 
 [cols="1,3",options="header"]
 |===
 | Task | What it does
 
-| `blueprint run check`
+| `kai run check`
 | Runs `scripts/check_all.roc`: the compiler pins, the bindings root, tracked
 machine code, the scripts and their tests, and `roc check` and `roc test` on
 every application and benchmark. Errors, warnings and failed expectations all
 fail it.
 
-| `blueprint run build`
+| `kai run build`
 | Builds the native host.
 
-| `blueprint run test`
+| `kai run test`
 | Builds every application and runs its specifications through the production
 host.
 
-| `blueprint run lint`
+| `kai run lint`
 | Runs Clippy over the host with warnings treated as errors.
 
-| `blueprint run regenerate-glue -- <roc source>`
+| `kai run regenerate-glue -- <roc source>`
 | Regenerates the host bindings from a nightly's source; see
 <<generated-bindings,Generated bindings>>.
 
-| `blueprint shell`
+| `kai shell`
 | Starts a shell in the development environment.
 |===
 
@@ -50,15 +50,15 @@ written for the latest Roc nightly, which is bare `roc`, and CI resolves that
 nightly once per run. A nightly that breaks them fails the scheduled
 compatibility workflow, and the fix is a change to the platform.
 
-`roc-stable` is the one pinned compiler. `Blueprint.roc` fetches it with
-`Recipes.roc_nightly`, and every script under `scripts/` names the same tag in
+`roc-stable` is the one pinned compiler. `Kaifile.roc` fetches it with
+`roc_nightly`, and every script under `scripts/` names the same tag in
 its `roc` header field, which `check` enforces. It runs the repository's Roc
-scripts only. To move it, change the tag in `Blueprint.roc` and in every
-script header, run `blueprint update`, format the scripts with
+scripts only. To move it, change the tag in `Kaifile.roc` and in every
+script header, run `kai update roc-stable`, format the scripts with
 `roc-stable fmt scripts`, and merge once CI passes.
 
 Install the repository hooks with `pre-commit install` and run them inside
-`blueprint shell`. The Roc hooks run `scripts/check_all.roc`; with `--staged`
+`kai shell`. The Roc hooks run `scripts/check_all.roc`; with `--staged`
 it checks only what the next commit records for machine code. Specification
 builds also reject a warning exit even when the compiler produced an
 executable.
@@ -78,7 +78,7 @@ unified lock.
 
 CI runs the same Clippy command as the local pre-commit hook, including test
 targets, with `-D warnings`. Install the `clippy` component from the repository
-Rust toolchain when running the hook outside the Blueprint environment.
+Rust toolchain when running the hook outside the Kai environment.
 
 CI checks that every maintained example and benchmark has adjacent
 specifications and runs the semantic suites. A build or semantic failure fails
@@ -189,7 +189,7 @@ Regenerate checked-in Roc ABI bindings whenever hosted functions or
 
 [source,sh]
 ----
-blueprint run regenerate-glue -- /path/to/roc-source
+kai run regenerate-glue -- /path/to/roc-source
 ----
 
 The source is that of the nightly `roc` is, such as the nightly release's
@@ -207,17 +207,17 @@ the HTML site, standalone PDF, static Markdown, and compiler API reference with:
 
 [source,sh]
 ----
-blueprint run docs
+kai run docs
 ----
 
-Blueprint downloads the released `roc-docs` executable for the host and verifies
-its digest against `Blueprint.lock`, including restored cache bytes. The shared
+Kai downloads the released `roc-docs` executable for the host and verifies
+its digest against `.kai/lock.json`, including restored cache bytes. The shared
 renderer supplies the HTML and PDF theme and source highlighting. The `roc` on
 PATH generates the platform API reference; it is independent of the renderer's
 tooling compiler. Output is written beneath `.docs-out/`, with the complete
 publishable site in `.docs-out/site/` and the manual at `.docs-out/roc-gui.pdf`.
 Pass renderer options after `--`, for example
-`blueprint run docs -- --docs-version main --roc-command /path/to/roc`.
+`kai run docs -- --docs-version main --roc-command /path/to/roc`.
 Use `--output-directory` to select another output directory inside the repository.
 
 Mermaid source stays beside the prose. After editing a diagram, install
@@ -351,11 +351,11 @@ CI verifies the component bytes and compares the exact prepared build identity.
 It may refresh the binding only when that identity is unchanged. A different
 published artifact requires an explicit repository admission decision.
 
-Consumers use `blueprint plan build freetype --json` for the selected snapshot,
-without Nix preparation. Missing, incompatible or changed evidence cannot pass
-freshness checks. These checks require the `blueprint` executable of the release
-`Blueprint.roc` names on `PATH`; CI installs that release's binary on every
-supported system after verifying it against its reviewed SHA-256.
+Consumers use `kai build freetype --plan` for the selected snapshot: the
+store path Nix names by the selected files' contents, which needs Nix to
+evaluate but builds nothing. Missing, incompatible or changed evidence cannot
+pass freshness checks. These checks require `kai` and Nix on `PATH`; CI
+installs Kai with its setup-kai action, on Linux only for now.
 The other producers retain their shared-file and standalone package-pin
 fingerprint; only FreeType-exclusive paths move to component admission.
 
@@ -377,15 +377,15 @@ platform and host changes reuse the locked release and never invoke a producer.
 
 === Linux producers with Nix
 
-FreeType uses Blueprint's managed Build contract declared by
+FreeType uses a Kai `Build` declared by
 `dependencies/FreeType.roc`. Its dedicated environment names its compiler,
 headers, libraries and tools. `dependencies/freetype.json` is the reviewed
 upstream URL/checksum authority. Selected files exclude the whole project
-configuration, whole Lock and unrelated component producers. The Python script
+configuration, whole lock and unrelated component producers. The Python script
 retains compilation, packaging and its native glyph probe.
 
 The other four Linux component producers use `dependencies/linux/default.nix`
-and the reviewed `dependencies/nixpkgs-pin.nix`. Blueprint uses the same
+and the reviewed `dependencies/nixpkgs-pin.nix`. Kai uses the same
 reviewed revision for its shared package source. Zig 0.16.0 and the build tools
 come from that package set. Meson uses the recipe's fixed-hash 1.12.0 source with the same
 nixpkgs packaging. Upstream source downloads are fixed-output derivations;
@@ -402,28 +402,27 @@ cmp /tmp/candidate/freetype-x64glibc.tar /tmp/rebuild/freetype-x64glibc.tar
 
 `--rebuild` executes Nix's reproducibility check, even when the first result is
 cached. CI requires sandboxing and repeats this for every Linux component.
-Schema-5 FreeType archives include selected native reproduction evidence:
-package revision/NAR hash, original-file hash, captured source identity and tool
-roots. Its native format 1 also explicitly lists source trees, dependency-build
-outputs and Roc package paths. This FreeType profile requires all three lists
-to be present and empty; unexpected inputs are rejected rather than silently
-omitted from its reproduction contract. The evidence is checked against its
-checksum and shipped corresponding
-source files. Selected source modes are recorded for faithful reconstruction.
+Schema-6 FreeType archives include selected native reproduction evidence:
+the package revision and NAR hash of `dependencies/nixpkgs-pin.nix`, the
+original file's hash from Kai's `$KAI_INPUTS/.kai-inputs.json` record, and
+the tool roots `$KAI_TOOLS` links. Format 2 holds exactly those three;
+anything else is rejected rather than silently omitted from its reproduction
+contract. The evidence is checked against its checksum and shipped
+corresponding source files. Selected source modes are recorded for faithful reconstruction.
 The final build identity is external, in
-`freetype-x64glibc.tar.blueprint.json`, bound to the measured archive digest and
-Blueprint's selected snapshot. It is never embedded into its own recipe inputs.
+`freetype-x64glibc.tar.kai.json`, bound to the measured archive digest and
+Kai's planned snapshot and derivation. It is never embedded into its own recipe inputs.
 
 `python3 scripts/check_linux_reproduction.py /tmp/candidate` rebuilds a minimal
 configuration around the shipped unchanged FreeType module, verifies resolved
-pins against shipped evidence and prepares the exact same build identity.
+pins against shipped evidence and plans the exact same derivation.
 Reproduction explicitly permits fetching the immutable pinned inputs; ordinary
 consumers do not run the producer.
 
 The other Linux producers use schema-4 archives with builder derivation,
-standalone package-pin checksum and Nix recipe. FreeType accepts only its Blueprint schema-5 contract; other producers retain
-their own native archive contracts. Producers do not embed the whole Blueprint
-Lock; unrelated lock edits do not alter their input bytes.
+standalone package-pin checksum and Nix recipe. FreeType accepts only its Kai schema-6 contract; other producers retain
+their own native archive contracts. Producers do not embed the whole Kai
+lock; unrelated lock edits do not alter their input bytes.
 
 Published shared libraries have no build search paths or store-qualified
 runtime dependencies. Producer probes use the sandbox's private loader and
